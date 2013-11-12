@@ -1,4 +1,5 @@
 import akka.actor.{Actor, Props}
+import clashcode.Hello
 import com.clashcode.web.controllers.Application
 import java.util.concurrent.TimeUnit
 import play.api.Application
@@ -44,5 +45,5 @@ class SimpleActor extends Actor {
 
 }
 
-case class Hello(numbers: Seq[Int])
+
 

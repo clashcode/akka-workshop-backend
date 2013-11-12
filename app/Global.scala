@@ -27,7 +27,7 @@ class SimpleActor extends Actor {
     case Hello(numbers) =>
       println("Calculating " + numbers.toString)
       val result = numbers.sum
-      Application.maybeChannel.foreach(_.push(result.toString))
+      Application.push(sender.path.address.host.getOrElse("anonymous") + ": " + result.toString)
       sender ! result
       /*
       val replyTo = sender
@@ -38,7 +38,7 @@ class SimpleActor extends Actor {
       */
     case text : String =>
       println("received " + text)
-      Application.maybeChannel.foreach(_.push(text))
+      Application.push(sender.path.address.host.getOrElse("anonymous") + ": " + text)
       sender ! ("you sent: " + text)
   }
 

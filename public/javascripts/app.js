@@ -1,4 +1,3 @@
-var wsUri = "ws://localhost:9000/status";
 
 $(function() {
 
@@ -11,7 +10,7 @@ $(function() {
     var websocket = new WebSocket(wsUri);
     websocket.onopen = function(evt) { write("CONNECTED to live stream") };
     websocket.onclose = function(evt) { write("DISCONNECTED") };
-    websocket.onmessage = function(evt) { write("Received: " + event.data) };
+    websocket.onmessage = function(evt) { write("" + event.data) };
     websocket.onerror = function(evt) { write("Error:" + evt.data) };
 
 })

@@ -2,31 +2,40 @@ package com.clashcode.web.controllers
 
 import play.api.mvc._
 import com.clashcode.web.views
-import play.api.libs.iteratee.{Enumerator, Iteratee, Concurrent}
+import play.api.libs.iteratee.{Iteratee, Concurrent}
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.Logger
 
 object Application extends Controller {
 
-  var maybeChannel : Option[Concurrent.Channel[String]] = None
+  var channels = Seq.empty[Concurrent.Channel[String]]
+
+  def push(message: String) = channels.foreach(_.push(message))
 
   def index = Action {
-    Ok(views.html.index("2 Your new application is ready."))
+    implicit request =>
+      val url = routes.Application.status().webSocketURL()
+      Ok(views.html.index(url))
   }
 
   def status = WebSocket.using[String] { request =>
 
-  //Concurernt.broadcast returns (Enumerator, Concurrent.Channel)
     val (out,channel) = Concurrent.broadcast[String]
-    maybeChannel = Some(channel)
+    channels = channels :+ channel
+    Logger.info("added channel: " + channels.length.toString)
 
-    //log the message to stdout and send response back to client
     val in = Iteratee.foreach[String] {
-      msg => println(msg)
-        //the Enumerator returned by Concurrent.broadcast subscribes to the channel and will
-        //receive the pushed messages
+      msg =>
+        println(msg)
         channel push("RESPONSE: " + msg)
         channel.eofAndEnd()
+    } mapDone {
+      _ =>
+        channels = channels.filter(_ != channel)
+        Logger.info("removed channel: " + channels.length.toString)
     }
+
+
     (in,out)
   }
 

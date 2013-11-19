@@ -8,9 +8,9 @@ import play.api.Logger
 
 object Application extends Controller {
 
-  var channels = Seq.empty[Concurrent.Channel[String]]
+  private val (out, channel) = Concurrent.broadcast[String]
 
-  def push(message: String) = channels.foreach(_.push(message))
+  def push(message: String) = channel.push(message)
 
   def index = Action {
     implicit request =>
@@ -20,21 +20,14 @@ object Application extends Controller {
 
   def status = WebSocket.using[String] { request =>
 
-    val (out,channel) = Concurrent.broadcast[String]
-    channels = channels :+ channel
-    Logger.info("added channel: " + channels.length.toString)
+    Logger.info("new listener")
 
+    // ignore incoming websocket traffic
     val in = Iteratee.foreach[String] {
-      msg =>
-        println(msg)
-        channel push("RESPONSE: " + msg)
-        channel.eofAndEnd()
+      msg => Logger.debug(msg)
     } mapDone {
-      _ =>
-        channels = channels.filter(_ != channel)
-        Logger.info("removed channel: " + channels.length.toString)
+      _ => Logger.info("removed listener")
     }
-
 
     (in,out)
   }

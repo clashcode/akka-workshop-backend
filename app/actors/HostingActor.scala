@@ -32,7 +32,7 @@ class HostingActor extends Actor {
 
   /** timer for running tournament rounds */
   context.system.scheduler.schedule(FiniteDuration(1, TimeUnit.SECONDS), FiniteDuration(1, TimeUnit.SECONDS)) {
-    context.self ! TournamentTick()
+    self ! TournamentTick()
   }
 
   def receive = {
@@ -42,12 +42,15 @@ class HostingActor extends Actor {
       // add player to list
       val now = DateTime.now
       val name = rawName.take(12) // trim name to 12 chars max
+      val isNew = !players.contains(name)
       val player = players.getOrElseUpdate(name, new Player(name, sender, 0, 0, 0, now, true))
       player.lastSeen = now
       player.active = true
+      player.ref = sender // update actor reference
 
       // log event
-      val response = "Welcome, " + player.name + " from " + player.ref.path.address.host.getOrElse("???")
+      val response = (if (isNew) "Welcome, " else "Hi again, ") + player.name + " from " + player.ref.path.address.host.getOrElse("???")
+
       logStatus(response)
       sender ! response
 
@@ -86,7 +89,7 @@ class HostingActor extends Actor {
       val activePlayers = players.values.toSeq.filter(_.active)
       if (running.length == 0 && upcoming.length == 0) {
 
-        if (activePlayers.length > 0)
+        if (activePlayers.length >= 2)
         {
           // round robin tournament
           val newGames = activePlayers.flatMap(player => {
@@ -103,14 +106,17 @@ class HostingActor extends Actor {
           logStatus("Starting new tournament with " + activePlayers.length + " players, " + newGames.length + " games.")
           upcoming.enqueue(newGames : _*)
         }
+        else if (activePlayers.length == 1) {
+          logStatus("Only one player connected (hello, " + activePlayers.head.name + ")")
+        }
         else {
           logStatus("No players connected")
         }
 
       }
 
-      // start upcoming games
-      upcoming.foreach(upcomingGame => {
+      // start upcoming games (use clone of upcoming queue, since we're modifying it inside)
+      List(upcoming : _*).foreach(upcomingGame => {
 
         val runningPlayers = running.flatMap(_.players)
         val availablePlayers = activePlayers.diff(runningPlayers)
@@ -130,8 +136,13 @@ class HostingActor extends Actor {
           implicit val timeout = Timeout(FiniteDuration(1, TimeUnit.SECONDS)) // needed for `?` below
           upcomingGame.players.foreach(player => {
             val otherPlayer = upcomingGame.players.filter(_ != player).headOption.getOrElse(player)
-            val future = (player.ref ? PrisonerRequest(otherPlayer.name)).mapTo[PrisonerResponse]
-            future.foreach(response => context.self ! PlayerResponse(player, otherPlayer, response))
+            (player.ref ? PrisonerRequest(otherPlayer.name)).foreach {
+              case response : PrisonerResponse => self ! PlayerResponse(player, otherPlayer, response)
+              case x =>
+                val response = "Unknown message " + x.toString + " from " + player.name
+                player.ref ! response
+                logStatus(response)
+            }
           })
 
         }
@@ -154,6 +165,7 @@ class HostingActor extends Actor {
         logStatus(response)
         player.ref ! response
       }
+      //else logStatus("got response from " + player.name)
 
       // update game
       maybeGame.foreach(game => {
@@ -182,11 +194,10 @@ class HostingActor extends Actor {
 
       })
 
-
-    case text : String =>
-      println("received " + text)
-      Application.push(sender.path.address.host.getOrElse("anonymous") + ": " + text)
-      sender ! ("you sent: " + text)
+    case x : String => // handle unknown messages
+      val response = "Unknown message " + x.toString + " from " + sender.path.address.host.getOrElse("???")
+      sender ! response
+      logStatus(response)
   }
 
   /** get points for player cooperation / defect */

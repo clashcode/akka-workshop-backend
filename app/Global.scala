@@ -1,13 +1,7 @@
 import actors.HostingActor
-import akka.actor.{Actor, Props}
-import clashcode.Hello
-import com.clashcode.web.controllers.Application
-import java.util.concurrent.TimeUnit
-import play.api.Application
+import akka.actor.Props
 import play.api.libs.concurrent.Akka
-import play.api.{Play, GlobalSettings, Logger, Application}
-import scala.concurrent.duration.FiniteDuration
-import play.api.libs.concurrent.Execution.Implicits._
+import play.api.{GlobalSettings, Logger, Application}
 
 object Global extends GlobalSettings {
 

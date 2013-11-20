@@ -2,8 +2,8 @@
 $(function() {
 
     function write(text) {
-        var existing = $('#output').text()
-        $('#output').text(existing + "\r\n" + text)
+        var existing = $('#output').val()
+        $('#output').val(existing + "\r\n" + text)
         console.log(text)
     }
 

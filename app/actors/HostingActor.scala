@@ -31,7 +31,7 @@ class HostingActor extends Actor {
   val upcoming = mutable.Queue.empty[Game]
 
   /** timer for running tournament rounds */
-  context.system.scheduler.scheduleOnce(FiniteDuration(1, TimeUnit.SECONDS)) {
+  context.system.scheduler.schedule(FiniteDuration(1, TimeUnit.SECONDS), FiniteDuration(1, TimeUnit.SECONDS)) {
     context.self ! TournamentTick()
   }
 
@@ -82,16 +82,44 @@ class HostingActor extends Actor {
         })
       })
 
+      // no running or upcoming games? start new tournament if we have players
+      val activePlayers = players.values.toSeq.filter(_.active)
+      if (running.length == 0 && upcoming.length == 0) {
+
+        if (activePlayers.length > 0)
+        {
+          // round robin tournament
+          val newGames = activePlayers.flatMap(player => {
+
+            // create all games where this player is first player (ordered alphabetically)
+            val opponents = activePlayers.filter(_.name > player.name)
+            opponents.map(opponent => Game(List(
+              Turn(player, now, now.plusSeconds(1), None, 0),
+              Turn(opponent, now, now.plusSeconds(1), None, 0)
+            )))
+
+          })
+
+          logStatus("Starting new tournament with " + activePlayers.length + " players, " + newGames.length + " games.")
+          upcoming.enqueue(newGames : _*)
+        }
+        else {
+          logStatus("No players connected")
+        }
+
+      }
+
       // start upcoming games
       upcoming.foreach(upcomingGame => {
 
         val runningPlayers = running.flatMap(_.players)
-        val availablePlayers = players.values.toSeq.diff(runningPlayers).filter(_.active)
+        val availablePlayers = activePlayers.diff(runningPlayers)
 
         // if both players for this game available, start the game
         if (upcomingGame.players.forall(availablePlayers.contains)) {
 
           upcoming.dequeueFirst(_ == upcomingGame)
+
           val start = DateTime.now
           val runningGame = upcomingGame.copy(upcomingGame.turns.map(_.copy(
             start = start,
@@ -109,6 +137,8 @@ class HostingActor extends Actor {
         }
 
       })
+
+
 
     // handle response of a player
     case PlayerResponse(player, otherPlayer, response) =>
@@ -187,7 +217,10 @@ class HostingActor extends Actor {
 
   }
 
+  var lastStatus = ""
   private def logStatus(status: String) {
+    if (status == lastStatus) return
+    lastStatus = status
     Application.push(status)
   }
 

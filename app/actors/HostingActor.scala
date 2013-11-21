@@ -143,6 +143,9 @@ class HostingActor extends Actor {
         upcoming.clear()
       }
 
+      // update high score list to web socket
+      Application.push(players.values.toSeq.sortBy(- _.points))
+
 
     // handle response of a player
     case PlayerResponse(player, otherPlayer, response) =>
@@ -269,9 +272,8 @@ class HostingActor extends Actor {
       player.coop = cooperations / player.games.max(1).toDouble
     })
 
-    // send updated high score
-    logStatus("games: " + games.size)
-
+    // send updated game
+    Application.push(game)
   }
 
   var lastStatus = ""

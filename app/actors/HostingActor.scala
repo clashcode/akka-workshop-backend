@@ -104,6 +104,8 @@ class HostingActor extends Actor {
 
       }
 
+      logStatus("No players connected x")
+
       // start upcoming games (use clone of upcoming queue, since we're modifying it inside)
       List(upcoming : _*).foreach(upcomingGame => {
 
@@ -190,6 +192,16 @@ class HostingActor extends Actor {
 
       })
 
+    case ResetStats =>
+
+      // reset all tournament points
+      games.clear()
+      players.values.foreach(player => {
+        player.coop = 1.0
+        player.games = 0
+        player.points = 0
+      })
+
     case state: CurrentClusterState ⇒
       Logger.info("Current members: " + state.members.mkString(", "))
 
@@ -267,7 +279,7 @@ class HostingActor extends Actor {
       val turns = games.flatMap(_.turns.find(t => t.player == player && t.cooperate.isDefined))
       player.games = turns.size
       player.points = turns.map(_.points).sum
-      player.ping = turns.map(t => (t.response.getMillis - t.start.getMillis).toInt).sum
+      player.ping = turns.map(t => (t.response.getMillis - t.start.getMillis).toInt).sum / turns.length.max(1)
       val cooperations = turns.map(t => if (t.cooperate.getOrElse(true)) 1 else 0).sum
       player.coop = cooperations / player.games.max(1).toDouble
     })
@@ -311,3 +323,5 @@ case class Game(turns: List[Turn]) {
   def hasPlayers(seq: Seq[Player]) : Boolean = seq.forall(players.contains)
   lazy val players = turns.map(_.player)
 }
+
+case object ResetStats

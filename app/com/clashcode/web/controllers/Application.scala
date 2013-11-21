@@ -6,11 +6,14 @@ import play.api.libs.iteratee.{Iteratee, Concurrent}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.Logger
 import play.api.libs.json.{Json, JsValue}
-import actors.{Player, Game}
+import actors.{ResetStats, Player, Game}
+import akka.actor.ActorRef
 
 object Application extends Controller {
 
   private val (out, channel) = Concurrent.broadcast[JsValue]
+
+  var maybeHostingActor = Option.empty[ActorRef]
 
   def push(game: Game) = channel.push(
     Json.obj("game" ->
@@ -48,7 +51,15 @@ object Application extends Controller {
 
     // ignore incoming websocket traffic
     val in = Iteratee.foreach[JsValue] {
-      msg => Logger.debug(msg.toString)
+      msg =>
+
+        Logger.debug(msg.toString)
+        val action = (msg \ "action").asOpt[String].getOrElse("")
+
+        // reset stats command
+        if (action == "reset")
+          maybeHostingActor.foreach(_ ! ResetStats)
+
     } mapDone {
       _ => Logger.info("removed listener")
     }

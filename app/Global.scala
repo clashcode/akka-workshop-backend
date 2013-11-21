@@ -1,12 +1,17 @@
 import actors.HostingActor
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor._
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
+import clashcode.Hello
+import clashcode.PrisonerRequest
+import clashcode.PrisonerResponse
 import clashcode.{PrisonerResponse, PrisonerRequest, Hello, NameRequest}
+import com.clashcode.web.controllers.Application
+import play.api.Application
 import play.api.{Play, GlobalSettings, Logger, Application}
+import scala.Some
 
 object Global extends GlobalSettings {
-
 
   var maybeCluster = Option.empty[ActorSystem]
 
@@ -22,6 +27,7 @@ object Global extends GlobalSettings {
 
       // start tournament hoster
       val hostingActor = system.actorOf(Props[HostingActor], "main")
+      Application.maybeHostingActor = Some(hostingActor)
 
       // hosting actor listens to cluster events
       Cluster(system).subscribe(hostingActor, classOf[ClusterDomainEvent])

@@ -276,6 +276,15 @@ class HostingActor extends Actor {
 
     // update player statistics
     game.players.foreach(player => {
+
+      // notify players about result
+      val myTurn = game.turns.find(_.player == player).getOrElse(game.turns.head)
+      val otherTurn = game.turns.find(_ != myTurn).getOrElse(game.turns.last)
+
+      otherTurn.cooperate.foreach(cooperate =>
+        player.ref ! PrisonerResult(otherTurn.player.name, cooperate))
+
+      // stats
       val turns = games.flatMap(_.turns.find(t => t.player == player && t.cooperate.isDefined))
       player.games = turns.size
       player.points = turns.map(_.points).sum

@@ -12,3 +12,5 @@ case class PrisonerRequest(name: String)
 /** [Prisoner] Answer to PrisonerRequest: cooperate or defect. */
 case class PrisonerResponse(cooperate: Boolean)
 
+/** [Investigator] Tells the prisoner whether the other one cooperated */
+case class PrisonerResult(name: String, cooperate: Boolean)

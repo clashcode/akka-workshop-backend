@@ -1,7 +1,7 @@
 package clashcode
 
 /** [Investigator] Ask prisoners name */
-case class NameRequest()
+case object NameRequest
 
 /** [Prisoner] Tell investigator your name (max 12 chars) */
 case class Hello(name: String)

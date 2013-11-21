@@ -1,7 +1,7 @@
 package actors
 
-import akka.actor.{ActorRef, Actor}
-import clashcode.{PrisonerResponse, PrisonerRequest, Hello}
+import akka.actor._
+import clashcode._
 import com.clashcode.web.controllers.Application
 import scala.concurrent.duration.FiniteDuration
 import java.util.concurrent.TimeUnit
@@ -10,6 +10,17 @@ import scala.collection.mutable
 import play.api.libs.concurrent.Execution.Implicits._
 import akka.pattern.{ ask, pipe }
 import akka.util.Timeout
+import akka.cluster.ClusterEvent._
+import play.api.Logger
+import akka.cluster.ClusterEvent.MemberRemoved
+import scala.Some
+import clashcode.Hello
+import akka.cluster.ClusterEvent.UnreachableMember
+import akka.cluster.ClusterEvent.MemberUp
+import akka.actor.Identify
+import akka.cluster.ClusterEvent.CurrentClusterState
+import clashcode.PrisonerResponse
+import clashcode.PrisonerRequest
 
 
 /**
@@ -37,29 +48,7 @@ class HostingActor extends Actor {
 
   def receive = {
 
-    case Hello(rawName) => // receive players name
-
-      // add player to list
-      val now = DateTime.now
-      val name = rawName.take(12) // trim name to 12 chars max
-      val isNew = !players.contains(name)
-      val player = players.getOrElseUpdate(name, new Player(name, sender, 0, 0, 0, now, true))
-      player.lastSeen = now
-      player.active = true
-      player.ref = sender // update actor reference
-
-      // log event
-      val response = (if (isNew) "Welcome, " else "Hi again, ") + player.name + " from " + player.ref.path.address.host.getOrElse("???")
-
-      logStatus(response)
-      sender ! response
-
-      // remove old players
-      while (players.size > 100)
-      {
-        val lastPlayer = players.values.toSeq.sortBy(p => Seconds.secondsBetween(now, p.lastSeen).getSeconds).last
-        players -= lastPlayer.name
-      }
+    case Hello(rawName) => handleHello(sender, rawName, false)
 
     // handle ongoing tournaments
     case _ : TournamentTick =>
@@ -149,6 +138,10 @@ class HostingActor extends Actor {
 
       })
 
+      // still no running games? not enough active players. remove upcoming games, wait for new tournament.
+      if (running.length == 0) {
+        upcoming.clear()
+      }
 
 
     // handle response of a player
@@ -194,10 +187,61 @@ class HostingActor extends Actor {
 
       })
 
-    case x : String => // handle unknown messages
+    case state: CurrentClusterState ⇒
+      Logger.info("Current members: " + state.members.mkString(", "))
+
+    case MemberUp(member) ⇒
+      Logger.info("Member is Up: " + member.address)
+
+      // try to discover player using cluster
+      val playerRef = context.actorFor(member.address + "/user/player")
+      implicit val timeout = Timeout(FiniteDuration(1, TimeUnit.SECONDS)) // needed for `?` below
+
+      (playerRef ? NameRequest).mapTo[Hello].foreach(hello => handleHello(playerRef, hello.name, true))
+
+    case UnreachableMember(member) ⇒
+      Logger.info("Member detected as unreachable: " + member)
+
+    case MemberRemoved(member, previousStatus) ⇒
+      Logger.info("Member is Removed: " + member.address + " after " + previousStatus)
+
+    case _: ClusterDomainEvent ⇒ // ignore
+
+    case x => // handle unknown messages
       val response = "Unknown message " + x.toString + " from " + sender.path.address.host.getOrElse("???")
       sender ! response
       logStatus(response)
+
+  }
+
+  /** received players name */
+  private def handleHello(sender: ActorRef, rawName: String, cluster: Boolean) {
+
+    // add player to list
+    val now = DateTime.now
+    val name = rawName.take(12) // trim name to 12 chars max
+    val isNew = !players.contains(name)
+    val player = players.getOrElseUpdate(name, new Player(name, sender, 0, 0, 0, now, true, 1.0, cluster))
+    player.lastSeen = now
+    player.active = true
+    player.ref = sender // update actor reference
+    player.cluster = cluster // update whether player was discovered via cluster
+
+    // log event
+    val response = (if (isNew) "Welcome, " else "Hi again, ") +
+      player.name + " from " + (if (cluster) "Cluster " else "") +
+      player.ref.path.address.host.getOrElse("???")
+
+    logStatus(response)
+    sender ! response
+
+    // remove old players
+    while (players.size > 100)
+    {
+      val lastPlayer = players.values.toSeq.sortBy(p => Seconds.secondsBetween(now, p.lastSeen).getSeconds).last
+      players -= lastPlayer.name
+    }
+
   }
 
   /** get points for player cooperation / defect */
@@ -221,6 +265,8 @@ class HostingActor extends Actor {
       player.games = turns.size
       player.points = turns.map(_.points).sum
       player.ping = turns.map(t => (t.response.getMillis - t.start.getMillis).toInt).sum
+      val cooperations = turns.map(t => if (t.cooperate.getOrElse(true)) 1 else 0).sum
+      player.coop = cooperations / player.games.max(1).toDouble
     })
 
     // send updated high score
@@ -242,12 +288,14 @@ case class TournamentTick()
 case class PlayerResponse(player: Player, otherPlayer: Player, response: PrisonerResponse)
 
 class Player(val name: String,
-             var ref: ActorRef,
-             var points: Int,
-             var games: Int,
-             var ping: Int,
-             var lastSeen: DateTime,
-             var active: Boolean)
+             var ref: ActorRef, // actor endpoint for communication with this player
+             var points: Int, // total score
+             var games: Int, // number of games completed
+             var ping: Int, // average response time in ms
+             var lastSeen: DateTime, // last message from this player
+             var active: Boolean, // does player answer to requests?
+             var coop: Double, // how cooperative is this player?
+             var cluster: Boolean) // is player discovered in cluster?
 
 case class Turn(player: Player,
                 start: DateTime,

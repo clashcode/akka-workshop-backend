@@ -22,7 +22,7 @@ $(function() {
                         .append($('<td>').text(p.games))
                         .append($('<td>').text(moment(p.lastSeen).fromNow()))
                         .append($('<td>').text(p.ping + "ms"))
-                        .append($('<td>').text((p.active ? "" : "Timeout") + " " + (p.cluster ? "" : "Cluster")))
+                        .append($('<td>').text((p.active ? "" : "Timeout") + " " + (p.cluster ? "Cluster" : "")))
                 )
             })
         }

@@ -104,7 +104,7 @@ class HostingActor extends Actor {
 
       }
 
-      logStatus("No players connected x")
+      //logStatus("No players connected x")
 
       // start upcoming games (use clone of upcoming queue, since we're modifying it inside)
       List(upcoming : _*).foreach(upcomingGame => {

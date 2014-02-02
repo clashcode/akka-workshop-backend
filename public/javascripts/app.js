@@ -7,7 +7,7 @@ $(function() {
     function act() {
         if (robot != null)
         {
-            game.act(robot.code);
+            game.act(robot.code.code);
             $('.field').html(game.render());
 
             $('#robot-table tbody').empty();

@@ -103,7 +103,7 @@ class HostingActor(broadcast: ActorRef, myIp: String) extends Actor {
     player.best = Some(if (best.points >= robot.points) best else robot)
     //Logger.info("received robot")
 
-    broadcast ! RobotCode.createRandomCode("Backend").evaluate
+    //broadcast ! RobotCode.createRandomCode("Backend").evaluate
   }
 
   /** handle regular broadcasting of robots */
@@ -113,7 +113,10 @@ class HostingActor(broadcast: ActorRef, myIp: String) extends Actor {
     val seconds = (DateTime.now.getMillis - lastRobot.getMillis) / 1000
     if (seconds >= 5) {
       val maybeRobot = Random.shuffle(players.values.map(_.best).flatten).headOption
-      val randomRobot = maybeRobot.getOrElse(RobotCode.createRandomCode("Backend").evaluate)
+      val randomRobot = maybeRobot.getOrElse({
+        val random = RobotCode.createRandomCode("Backend")
+        random.copy(code = random.code.map(_ => 5.toByte)).evaluate
+      })
       broadcast ! randomRobot
       //Logger.info("broadcasting robot")
     }

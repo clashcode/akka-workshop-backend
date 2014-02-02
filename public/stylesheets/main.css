@@ -1,5 +1,6 @@
 /** robot styles */
 
+/** area */
 .field {
     width: 400px;
     height: 400px;
@@ -8,19 +9,47 @@
     line-height: 0px;
 }
 
-.field span {
+/** field tile */
+.field>span {
     display: inline-block;
     width: 40px;
     height: 40px;
+    position: relative;
 }
 
+/** can */
 .field .item {
-    background-color: yellow;
+    display: block;
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: url('/assets/images/cans/can.png') no-repeat center ;
+    background-size: cover;
+    /* background-color: yellow; */
 }
 
+/** robot */
 .field .robot {
-    width: 30px;
-    height: 30px;
-    margin: 5px;
-    background-color: black;
+    display: block;
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    top: -35px;
+    left: -30px;
+    background: url('/assets/images/robots/r2.png') no-repeat center;
+    background-size: cover;
+    /* margin: 5px; */
+    /* background-color: black; */
+}
+
+.field .robot.d0 {
+    background-image: url('/assets/images/robots/r0.png');
+}
+
+.field .robot.d1 {
+    background-image: url('/assets/images/robots/r1.png');
+}
+
+.field .robot.d3 {
+    background-image: url('/assets/images/robots/r3.png');
 }

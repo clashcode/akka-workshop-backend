@@ -41,6 +41,7 @@ function Game()
 
 	// act
 	this.points = 0;
+    this.direction = 2;
 	this.act = function(code) {
 
 	    if (this.moves >= 200) return;
@@ -56,7 +57,7 @@ function Game()
 
 	    // get decision
 	    var mapped = reverseMapping[sit]
-		var decision = parseInt(code[mapped])
+		var decision = parseInt(code[mapped], 10)
 
 		// random move
 		if (decision == 5) decision = Math.floor(Math.random() * 4);
@@ -70,6 +71,9 @@ function Game()
 			else delta = [ -1, 0 ]
 			var nextX = this.x + delta[0];
 			var nextY = this.y + delta[1];
+
+            // store robot direction
+            this.direction = decision;
 
             // test move location
 			if (this.getCell(nextX, nextY) == 1) {
@@ -96,11 +100,12 @@ function Game()
 
 	// get html
 	this.render = function() {
+        var self = this;
 	    var robotIndex = this.getIndex(this.x, this.y)
 	    var result = $.map(this.field, function(f, i) {
-	        var fieldClass = f ? "item" : "empty"
-	        var result = $('<span class="' + fieldClass + '">')
-	        if (i == robotIndex) result.append($('<span class="robot">'))
+	        var result = $('<span>')
+	        if (i == robotIndex) result.append($('<span class="robot d' + self.direction + '">'))
+            if (f) result.append($('<span class="item">'))
 	        return result;
 	    })
 	    return result;

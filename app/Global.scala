@@ -30,7 +30,8 @@ object Global extends GlobalSettings {
         name = "router")
 
       // start tournament hoster
-      val hostingActor = system.actorOf(Props(classOf[HostingActor], broadcastRouter), "main")
+      val myIp = clusterConfig.getString("akka.remote.netty.tcp.hostname").getOrElse("localhost")
+      val hostingActor = system.actorOf(Props(classOf[HostingActor], broadcastRouter, myIp), "main")
       Application.maybeHostingActor = Some(hostingActor)
 
       // hosting actor listens to cluster events

@@ -32,7 +32,7 @@ object Application extends Controller {
     Json.obj(
       "points" -> robot.points,
       "code" -> Json.obj(
-        "code" -> robot.code.code.map(_.toInt),
+        "code" -> robot.code.code.mkString,
         "creatorName" -> robot.code.creatorName,
         "generation" -> robot.code.generation,
         "generations" -> robot.code.generations.toSeq.map {

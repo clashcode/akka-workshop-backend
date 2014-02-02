@@ -1,6 +1,41 @@
 
 $(function() {
 
+    var game = null;
+    var robot = null;
+
+    function act() {
+        if (robot != null)
+        {
+            game.act(robot.code);
+            $('.field').html(game.render());
+
+            $('#robot-table tbody').empty();
+
+            $('#robot-table tbody').append($('<tr>')
+                .append($('<td>').text("Points"))
+                .append($('<td>').text(game.points)))
+            $('#robot-table tbody').append($('<tr>')
+                .append($('<td>').text("Moves"))
+                .append($('<td>').text(game.moves)))
+
+            $('#robot-table tbody').append($('<tr>')
+                .append($('<td>').text("Total points"))
+                .append($('<td>').text(robot.points)))
+            $('#robot-table tbody').append($('<tr>')
+                .append($('<td>').text("Creator"))
+                .append($('<td>').text(robot.code.creatorName)))
+
+            $.map(robot.code.generations, function(g) {
+                $('#robot-table tbody').append($('<tr>')
+                    .append($('<td>').text("Generations " + g.name))
+                    .append($('<td>').text(g.count)))
+            });
+        }
+        setTimeout(act, 200)
+    }
+    setTimeout(act, 200)
+
     function update(data) {
 
         if (data.status) {
@@ -11,6 +46,8 @@ $(function() {
             }
         }
         else if (data.players) {
+
+            // refresh high score
             $('#players-table tbody').empty();
             $.each(data.players, function() {
                 var p = this
@@ -18,12 +55,30 @@ $(function() {
                     $('<tr>')
                         .append($('<td>').text(p.name))
                         .append($('<td>').text(p.robots))
-                        .append($('<td>').text(p.best.points))
-                        .append($('<td>').text(p.best.code.generation))
+                        .append($('<td>').text((p.best != null) ? p.best.points : ""))
+                        .append($('<td>').text((p.best != null) ? p.best.code.generation : ""))
                         .append($('<td>').text(moment(p.lastSeen).fromNow()))
                         .append($('<td>').text(p.status))
                 )
             })
+
+            // find robot to visualize
+            if (data.players.length > 0 && (game == null || game.isFinished())) {
+                var best = null;
+                $.map(data.players, function(p, i) {
+                    if (p.best != null &&
+                        (best == null || best.points < p.best.points))
+                        best = p.best;
+                })
+
+                if (best != null)
+                {
+                    // start new game
+                    game = new Game();
+                    robot = best;
+                }
+            }
+
         }
         else
             console.log(data)

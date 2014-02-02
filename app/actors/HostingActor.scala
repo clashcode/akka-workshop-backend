@@ -1,42 +1,38 @@
 package actors
 
 import akka.actor._
-import clashcode._
 import com.clashcode.web.controllers.Application
 import scala.concurrent.duration.FiniteDuration
 import java.util.concurrent.TimeUnit
-import org.joda.time.{Seconds, DateTime}
+import org.joda.time.DateTime
 import scala.collection.mutable
 import play.api.libs.concurrent.Execution.Implicits._
-import akka.pattern.{ ask, pipe }
-import akka.util.Timeout
 import akka.cluster.ClusterEvent._
 import play.api.Logger
 import akka.cluster.ClusterEvent.MemberRemoved
-import scala.Some
 import akka.cluster.ClusterEvent.UnreachableMember
 import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.ClusterEvent.CurrentClusterState
 import clashcode.robot.{RobotCode, Robot}
 import scala.util.Random
 
-
 /**
  * Listens to messages of all participants in cluster, keeps player high score.
  */
-class HostingActor(broadcast: ActorRef) extends Actor {
+class HostingActor(broadcast: ActorRef, myIp: String) extends Actor {
 
   /** map of players (max 100) from ip address to player object */
   val players = mutable.Map.empty[String, Player]
 
   val actorPath = "/user/main" // default actor path
-  var lastRobot = DateTime.now // last robot submission
+  var lastRobot = DateTime.now.minusSeconds(10) // last robot submission
 
   /** timer for running tournament rounds */
   case object Tick
   context.system.scheduler.schedule(FiniteDuration(1, TimeUnit.SECONDS), FiniteDuration(1, TimeUnit.SECONDS)) {
     self ! Tick
   }
+  self ! Tick
 
   def receive = {
 
@@ -78,7 +74,7 @@ class HostingActor(broadcast: ActorRef) extends Actor {
 
   /** get or create new player by actor address */
   private def getPlayerByAddress(address: Address) : Player = {
-    val host = address.host.getOrElse("localhost")
+    val host = address.host.getOrElse(myIp)
     players.getOrElseUpdate(host, new Player(
       name = "anonymous-" + host,
       ref = context.actorFor(address + actorPath),
@@ -94,6 +90,7 @@ class HostingActor(broadcast: ActorRef) extends Actor {
 
     val player = getPlayerByAddress(sender.path.address)
     val robot = rawRobot.code.evaluate // prevent cheating by recalculating points
+    lastRobot = DateTime.now
 
     // update player
     setStatus(player, "Online")
@@ -104,7 +101,9 @@ class HostingActor(broadcast: ActorRef) extends Actor {
     // determine best robot
     val best = player.best.getOrElse(robot)
     player.best = Some(if (best.points >= robot.points) best else robot)
+    //Logger.info("received robot")
 
+    broadcast ! RobotCode.createRandomCode("Backend").evaluate
   }
 
   /** handle regular broadcasting of robots */
@@ -113,15 +112,15 @@ class HostingActor(broadcast: ActorRef) extends Actor {
     // send a robot to the cluster
     val seconds = (DateTime.now.getMillis - lastRobot.getMillis) / 1000
     if (seconds >= 5) {
-      lastRobot = DateTime.now
-
       val maybeRobot = Random.shuffle(players.values.map(_.best).flatten).headOption
       val randomRobot = maybeRobot.getOrElse(RobotCode.createRandomCode("Backend").evaluate)
       broadcast ! randomRobot
+      //Logger.info("broadcasting robot")
     }
 
     // update visualization
     Application.push(players.values.toList)
+    //Logger.info(players.keys.mkString(", "))
 
   }
 

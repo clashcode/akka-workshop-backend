@@ -2,13 +2,10 @@ import actors.HostingActor
 import akka.actor._
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
-import clashcode.Hello
-import clashcode.PrisonerRequest
-import clashcode.PrisonerResponse
-import clashcode.{PrisonerResponse, PrisonerRequest, Hello, NameRequest}
+import akka.cluster.routing.{ClusterRouterSettings, ClusterRouterConfig}
+import akka.routing.BroadcastRouter
 import com.clashcode.web.controllers.Application
-import play.api.Application
-import play.api.{Play, GlobalSettings, Logger, Application}
+import play.api.{Play, GlobalSettings, Application}
 import scala.Some
 
 object Global extends GlobalSettings {
@@ -25,33 +22,26 @@ object Global extends GlobalSettings {
       val system = ActorSystem("cluster", clusterConfig.underlying)
       maybeCluster = Some(system)
 
+      // this router sends messages to up to 100 other "main" actors in the cluster
+      val broadcastRouter = system.actorOf(Props.empty.withRouter(
+        ClusterRouterConfig(
+          BroadcastRouter(),
+          ClusterRouterSettings(totalInstances = 100, routeesPath = "/user/main", allowLocalRoutees = true, useRole = None))),
+        name = "router")
+
       // start tournament hoster
-      val hostingActor = system.actorOf(Props[HostingActor], "main")
+      val hostingActor = system.actorOf(Props(classOf[HostingActor], broadcastRouter), "main")
       Application.maybeHostingActor = Some(hostingActor)
 
       // hosting actor listens to cluster events
       Cluster(system).subscribe(hostingActor, classOf[ClusterDomainEvent])
 
-      // start test prisoner on main server
-      system.actorOf(Props(classOf[Prisoner], "PrisonerX"), "player")
     })
   }
 
   override def onStop(app: Application) {
     super.onStop(app)
     maybeCluster.foreach(_.shutdown())
-  }
-
-}
-
-
-
-class Prisoner(name: String) extends Actor {
-
-  def receive = {
-    case NameRequest => sender ! Hello(name)
-    case PrisonerRequest(other) => sender ! PrisonerResponse(true)
-    case x : String => println(x)
   }
 
 }

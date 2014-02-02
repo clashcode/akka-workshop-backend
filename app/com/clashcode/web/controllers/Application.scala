@@ -6,8 +6,9 @@ import play.api.libs.iteratee.{Iteratee, Concurrent}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.Logger
 import play.api.libs.json.{Json, JsValue}
-import actors.{ResetStats, Player, Game}
+import actors.{ResetStats, Player}
 import akka.actor.ActorRef
+import clashcode.robot.Robot
 
 object Application extends Controller {
 
@@ -15,27 +16,34 @@ object Application extends Controller {
 
   var maybeHostingActor = Option.empty[ActorRef]
 
-  def push(game: Game) = channel.push(
-    Json.obj("game" ->
-      Json.toJson(game.turns.map(t =>
-        Json.obj(
-          "name" -> t.player.name,
-          "cooperate" -> t.cooperate,
-          "points" -> t.points)))))
+  def push(players: Seq[Player]) = {
+    channel.push(
+      Json.obj("players" ->
+        Json.toJson(players.map(p =>
+          Json.obj(
+            "name" -> p.name,
+            "robots" -> p.robots,
+            "best" -> p.best.map(robotToJson(_)),
+            "lastSeen" -> p.lastSeen,
+            "status" -> p.status)))))
+  }
 
-  def push(players: Seq[Player]) = channel.push(
-    Json.obj("players" ->
-      Json.toJson(players.map(p =>
-        Json.obj(
-          "name" -> p.name,
-          "active" -> p.active,
-          "cluster" -> p.cluster,
-          "coop" -> p.coop,
-          "games" -> p.games,
-          "lastSeen" -> p.lastSeen,
-          "ping" -> p.ping,
-          "points" -> p.points)))))
-
+  private def robotToJson(robot: Robot) = {
+    Json.obj(
+      "points" -> robot.points,
+      "code" -> Json.obj(
+        "code" -> robot.code.code.map(_.toInt),
+        "creatorName" -> robot.code.creatorName,
+        "generation" -> robot.code.generation,
+        "generations" -> robot.code.generations.toSeq.map {
+          case (name, count) => Json.obj(
+            "name" -> name,
+            "count" -> count
+          )
+        }
+      )
+    )
+  }
 
   def push(message: String) = channel.push(Json.obj("status" -> message))
 

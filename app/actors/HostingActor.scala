@@ -94,7 +94,7 @@ class HostingActor(broadcast: ActorRef, myIp: String) extends Actor {
 
     // update player
     setStatus(player, "Online")
-    player.name = robot.code.creatorName
+    player.name = robot.code.creatorName.take(16)
     player.robots += 1
     player.ref = sender
 
@@ -115,7 +115,10 @@ class HostingActor(broadcast: ActorRef, myIp: String) extends Actor {
       val maybeRobot = Random.shuffle(players.values.map(_.best).flatten).headOption
       val randomRobot = maybeRobot.getOrElse({
         val random = RobotCode.createRandomCode("Backend")
-        random.copy(code = random.code.map(_ => 5.toByte)).evaluate
+        random.copy(
+          //generations = random.generations ++ Map("bla" -> 3, "blub" -> 5, "tasdf" -> 1, "asdjfhg" -> 0, "asdkfha" -> 0),
+          code = random.code.map(_ => 5.toByte)).
+          evaluate
       })
       broadcast ! randomRobot
       //Logger.info("broadcasting robot")

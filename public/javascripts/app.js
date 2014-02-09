@@ -10,38 +10,19 @@ $(function() {
             game.act(robot.code.code);
             $('.field').html(game.render());
 
-            var infoOutput = "<h2><strong>" + robot.code.creatorName +  "</strong> (Fitness: " + robot.points + ")</h2>" +
-                "<p>Points: " + game.points + "</p>" +
-                "<p>Moves: " + game.moves + " / 200</p><br><p><strong>Generations</strong></p>";
+            var infoOutput = "<h2><strong>" + robot.code.creatorName +  "</strong><br>Fitness: " + robot.points + "</h2>" +
+                "<p>Points: " + game.points + "<br>" +
+                "Moves: " + game.moves + " / 200</p><br>" +
+                "<strong>Generations History:</strong><br>";
 
+            var count = 10;
             $.map(robot.code.generations, function(g) {
-                infoOutput += "<p>" + g.name + ": <strong>" + g.count + "</strong></p>";
+                count--;
+                if (count >= 0) infoOutput += g.name + ": <strong>" + g.count + "</strong><br>";
             });
 
             $('#robot-info').html(infoOutput)
-            /*
-            $('#robot-info').append($('<tr>')
-                .append($('<td>').html("<strong>Creator</strong>"))
-                .append($('<td>').append($('<strong>').text(robot.code.creatorName))))
 
-            $('#robot-table tbody').append($('<tr>')
-                .append($('<td>').text("Points"))
-                .append($('<td>').text(game.points)))
-
-            $('#robot-table tbody').append($('<tr>')
-                .append($('<td>').text("Moves"))
-                .append($('<td>').text(game.moves)))
-
-            $('#robot-table tbody').append($('<tr>')
-                .append($('<td>').text("Total points"))
-                .append($('<td>').text(robot.points)))
-
-            $('#robot-table tbody').append($('<tr>')
-                .append($('<td>').text("Generation"))
-                .append($('<td>').text(robot.generation)))
-
-
-            */
         }
         setTimeout(act, 200)
     }
@@ -87,6 +68,9 @@ $(function() {
                     // start new game
                     game = new Game();
                     robot = best;
+
+                    // sort players descending
+                    robot.code.generations.sort(function(a,b) { return b.count - a.count });
                 }
             }
 

@@ -10,11 +10,24 @@ $(function() {
             game.act(robot.code.code);
             $('.field').html(game.render());
 
-            $('#robot-table tbody').empty();
+            var infoOutput = "<h2><strong>" + robot.code.creatorName +  "</strong> (Fitness: " + robot.points + ")</h2>" +
+                "<p>Points: " + game.points + "</p>" +
+                "<p>Moves: " + game.moves + " / 200</p><br><p><strong>Generations</strong></p>";
+
+            $.map(robot.code.generations, function(g) {
+                infoOutput += "<p>" + g.name + ": <strong>" + g.count + "</strong></p>";
+            });
+
+            $('#robot-info').html(infoOutput)
+            /*
+            $('#robot-info').append($('<tr>')
+                .append($('<td>').html("<strong>Creator</strong>"))
+                .append($('<td>').append($('<strong>').text(robot.code.creatorName))))
 
             $('#robot-table tbody').append($('<tr>')
                 .append($('<td>').text("Points"))
                 .append($('<td>').text(game.points)))
+
             $('#robot-table tbody').append($('<tr>')
                 .append($('<td>').text("Moves"))
                 .append($('<td>').text(game.moves)))
@@ -22,15 +35,13 @@ $(function() {
             $('#robot-table tbody').append($('<tr>')
                 .append($('<td>').text("Total points"))
                 .append($('<td>').text(robot.points)))
-            $('#robot-table tbody').append($('<tr>')
-                .append($('<td>').text("Creator"))
-                .append($('<td>').text(robot.code.creatorName)))
 
-            $.map(robot.code.generations, function(g) {
-                $('#robot-table tbody').append($('<tr>')
-                    .append($('<td>').text("Generations " + g.name))
-                    .append($('<td>').text(g.count)))
-            });
+            $('#robot-table tbody').append($('<tr>')
+                .append($('<td>').text("Generation"))
+                .append($('<td>').text(robot.generation)))
+
+
+            */
         }
         setTimeout(act, 200)
     }

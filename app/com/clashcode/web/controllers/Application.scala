@@ -4,11 +4,12 @@ import play.api.mvc._
 import com.clashcode.web.views
 import play.api.libs.iteratee.{Iteratee, Concurrent}
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.Logger
+import play.api.{Play, Logger}
 import play.api.libs.json.{Json, JsValue}
 import actors.{ResetStats, Player}
 import akka.actor.ActorRef
 import clashcode.robot.Robot
+import Play.current
 
 object Application extends Controller {
 
@@ -50,7 +51,10 @@ object Application extends Controller {
   def index = Action {
     implicit request =>
       val url = routes.Application.status().webSocketURL()
-      Ok(views.html.index(url))
+      val myIp = Play.configuration.getString("cluster.akka.remote.netty.tcp.hostname").getOrElse("localhost")
+      val myPort = Play.configuration.getString("cluster.akka.remote.netty.tcp.port").getOrElse("localhost")
+      val host = "akka.tcp://cluster@" + myIp + ":" + myPort
+      Ok(views.html.index(url, host))
   }
 
   def status = WebSocket.using[JsValue] { request =>

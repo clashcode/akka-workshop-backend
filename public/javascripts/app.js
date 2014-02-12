@@ -3,6 +3,7 @@ $(function() {
 
     var game = null;
     var robot = null;
+    var robots = [];
 
     function act() {
         if (robot != null)
@@ -27,6 +28,15 @@ $(function() {
         setTimeout(act, 200)
     }
     setTimeout(act, 200)
+
+    function setRobot(newRobot) {
+        // start new game
+        game = new Game();
+        robot = newRobot;
+
+        // sort players descending
+        robot.code.generations.sort(function(a,b) { return b.count - a.count });
+    }
 
     function update(data) {
 
@@ -55,24 +65,19 @@ $(function() {
             })
 
             // find robot to visualize
-            if (data.players.length > 0 && (game == null || game.isFinished())) {
-                var best = null;
-                $.map(data.players, function(p, i) {
-                    if (p.best != null &&
-                        (best == null || best.points < p.best.points))
-                        best = p.best;
-                })
-
-                if (best != null)
+            robots.length = 0;
+            var best = null;
+            $.map(data.players, function(p, i) {
+                if (p.best != null)
                 {
-                    // start new game
-                    game = new Game();
-                    robot = best;
-
-                    // sort players descending
-                    robot.code.generations.sort(function(a,b) { return b.count - a.count });
+                    robots.push(p.best);
+                    if (best == null || best.points < p.best.points)
+                        best = p.best;
                 }
-            }
+            });
+
+            if (best != null && (game == null || game.isFinished()))
+                setRobot(best);
 
         }
         else
@@ -95,5 +100,17 @@ $(function() {
     $('#reset-button').click(function() {
         websocket.send(JSON.stringify({ action: "reset" }));
     })
+
+    // show next robot
+    var setIndex = -1;
+    $('#next-button').click(function() {
+
+        setIndex++;
+        if (setIndex >= robots.length) setIndex = 0;
+
+        if (setIndex < robots.length)
+            setRobot(robots[setIndex]);
+    })
+
 
 })

@@ -111,7 +111,7 @@ function Game()
 	    return result;
 	}
 
-	console.log(this.field);
+	//console.log(this.field);
 }
 
 

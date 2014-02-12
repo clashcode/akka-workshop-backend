@@ -125,7 +125,7 @@ class HostingActor(broadcast: ActorRef, myIp: String) extends Actor {
     }
 
     // update visualization
-    Application.push(players.values.toList)
+    Application.push(players.values.toList.sortBy(- _.best.map(_.points).getOrElse(-100000)))
     //Logger.info(players.keys.mkString(", "))
 
   }
